@@ -22,38 +22,26 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
           channel: 'stable'
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
 
       - name: Create Android Native Scaffold
         run: flutter create . --platforms=android --org com.berrybite.app
 
-      - name: Configure Android Permissions and SDK
+      - name: Add Internet permission
         run: |
-          python3 -c '
-          # 1. Add Internet Permission to AndroidManifest.xml
-          manifest_path = "android/app/src/main/AndroidManifest.xml"
-          with open(manifest_path, "r") as f:
-              m_content = f.read()
-          if "android.permission.INTERNET" not in m_content:
-              m_content = m_content.replace("<application", "    <uses-permission android:name=\"android.permission.INTERNET\" />\n    <application")
-              with open(manifest_path, "w") as f:
-                  f.write(m_content)
-
-          # 2. Ensure SDK 35 is set in build.gradle
-          gradle_path = "android/app/build.gradle"
-          with open(gradle_path, "r") as f:
-              g_content = f.read()
-          g_content = g_content.replace("compileSdkVersion 34", "compileSdkVersion 35")
-          g_content = g_content.replace("targetSdkVersion 34", "targetSdkVersion 35")
-          g_content = g_content.replace("compileSdk = 34", "compileSdk = 35")
-          g_content = g_content.replace("targetSdk = 34", "targetSdk = 35")
-          with open(gradle_path, "w") as f:
-              f.write(g_content)
-          '
+          f=android/app/src/main/AndroidManifest.xml
+          grep -q "android.permission.INTERNET" $f || \
+            sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET" />\n    <application|' $f
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Analyze (shows real Dart errors)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
@@ -62,5 +50,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: berrybite-release-apk
-          path: build/app/outputs/apk/release/app-release.apk
-          
+          path: build/app/outputs/flutter-apk/app-release.apk
