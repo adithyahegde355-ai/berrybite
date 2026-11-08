@@ -232,6 +232,79 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+class RecipeDetailScreen extends StatefulWidget {
+  final String mealId;
+  const RecipeDetailScreen({super.key, required this.mealId});
+
+  @override
+  State<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
+}
+
+class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
+  Map<String, dynamic>? _mealData;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMealDetails();
+  }
+
+  Future<void> _fetchMealDetails() async {
+    try {
+      final res = await http.get(Uri.parse('https://www.themealdb.com/api/json/v1/1/lookup.php?i=${widget.mealId}'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _mealData = data['meals'] != null ? data['meals'][0] : null;
+          _loading = false;
+        });
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (e) {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_mealData?['strMeal'] ?? "Recipe Details"),
+        backgroundColor: const Color(0xFFFFF8F5),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFC95675)))
+          : _mealData == null
+              ? const Center(child: Text("Could not load recipe details."))
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.network(_mealData!['strMealThumb'], height: 250, fit: BoxFit.cover),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _mealData!['strMeal'],
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF49323A)),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Category: ${_mealData!['strCategory']} | Area: ${_mealData!['strArea']}",
+                      style: const TextStyle(color: Color(0xFF927D83)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text("Instructions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF49323A))),
+                    const SizedBox(height: 8),
+                    Text(_mealData!['strInstructions'] ?? '', style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF49323A))),
+                  ],
+                ),
+    );
+  }
+}
+
 class CookScreen extends StatefulWidget {
   const CookScreen({super.key});
 
@@ -271,6 +344,87 @@ class _CookScreenState extends State<CookScreen> {
           children: [
             Row(
               children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: "Add ingredient (e.g. Paneer)",
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    if (_controller.text.isNotEmpty) {
+                      setState(() {
+                        _ingredients.add(_controller.text.trim());
+                        _controller.clear();
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.add_circle, color: Color(0xFFC95675), size: 36),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: _ingredients.map((ing) => Chip(
+                label: Text(ing),
+                backgroundColor: const Color(0xFFF9DCE3),
+                onDeleted: () => setState(() => _ingredients.remove(ing)),
+              )).toList(),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _searchRecipes,
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC95675)),
+              child: const Text("Find Recipes", style: TextStyle(color: Colors.white)),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _matchingRecipes.length,
+                itemBuilder: (context, index) {
+                  final recipe = _matchingRecipes[index];
+                  return ListTile(
+                    leading: Image.network(recipe['strMealThumb'], width: 50, height: 50, fit: BoxFit.cover),
+                    title: Text(recipe['strMeal']),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RecipeDetailScreen(mealId: recipe['idMeal']))),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ExploreScreen extends StatelessWidget {
+  const ExploreScreen({super.key});
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: Center(child: Text("Explore Cuisines")));
+}
+
+class SavedScreen extends StatelessWidget {
+  const SavedScreen({super.key});
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: Center(child: Text("Saved Recipes")));
+}
+
+class ProfileScreen extends StatelessWidget {
+  final String userName;
+  final Function(String) onNameChanged;
+  const ProfileScreen({super.key, required this.userName, required this.onNameChanged});
+  @override
+  Widget build(BuildContext context) => Scaffold(body: Center(child: Text("Profile: $userName")));
+}
+
+children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
