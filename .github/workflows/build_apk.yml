@@ -44,7 +44,8 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
       - name: Build APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: |
+          flutter build apk --release --no-tree-shake-icons 2>&1 | tee build.log || (grep -nE "Error|error:|lib/.*dart" build.log | head -30; exit 1)
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
